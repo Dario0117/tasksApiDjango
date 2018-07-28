@@ -1,9 +1,25 @@
 from django.http import HttpResponse
+from django.core.validators import validate_email
+import json
+
+def _validate_email(body):
+    # Parse bytes to string
+    bodyString = body.decode('utf-8')
+    # Parse string to dict
+    params = json.loads(bodyString.replace('\'', '\"'))
+    if params:
+        try:
+            validate_email(params['email'])
+        except:
+            return 400
+    else:
+        return 400
+    return 200
 
 def _validate(request):
     if request.method == 'POST':
         if request.content_type == 'application/json':
-            return 200
+            return _validate_email(request.body)
         else:
             return 400
     else:

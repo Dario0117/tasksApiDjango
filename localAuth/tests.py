@@ -1,12 +1,17 @@
 from django.test import TestCase, Client
 
-class AuthTestCase(TestCase):
+class LocalAuthTestCase(TestCase):
 
     def setUp(self):
         self.makeRequest = Client()
         self.registerPath = '/register'
         self.loginPath = '/login'
         self.contentType = 'application/json'
+        self.user = {
+            'email': 'e@mail.com',
+            'name': 'Dario0117',
+            'password': 'Pa55w0rD',
+        }
         
         # Ideal case requests
         # This requests should ALWAYS work
@@ -26,7 +31,8 @@ class AuthTestCase(TestCase):
                 ),
                 'POST': self.makeRequest.post(
                     path = self.registerPath, 
-                    content_type = self.contentType
+                    content_type = self.contentType,
+                    data = self.user
                 ),
             },
             'login': {
@@ -44,7 +50,8 @@ class AuthTestCase(TestCase):
                 ),
                 'POST': self.makeRequest.post(
                     path = self.loginPath, 
-                    content_type = self.contentType
+                    content_type = self.contentType,
+                    data = self.user
                 ),
             }
         }
