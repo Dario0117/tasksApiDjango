@@ -86,3 +86,55 @@ class LocalAuthTestCase(TestCase):
         self.assertEqual(loginRequests['POST'].status_code, 200)
         self.assertEqual(badRequestLogin.status_code, 400)
         
+    def test_request_must_have_correct_params(self):
+        registerRequests = self.requests['register']
+        badUsers = [
+            { # empty
+
+            },
+            { # no name
+                'email': 'b@mail.com',
+                'name': 'test'
+            },
+            { # no email
+                'name': 'Dario0117',
+                'password': 'Pa55w0rD',
+            },
+            { # no password
+                'email': 'c@mail.com',
+                'name': 'Dario0117',
+            }
+        ]
+
+        for user in badUsers:
+            badRequestRegister = self.makeRequest.post(
+                path = self.registerPath, 
+                content_type = self.contentType,
+                data = user
+            )
+            self.assertEqual(badRequestRegister.status_code, 400)
+
+        self.assertEqual(registerRequests['POST'].status_code, 200)
+
+        loginRequests = self.requests['login']
+        badUsers = [
+            { # empty
+
+            },
+            { # no email
+                'password': 'Pa55w0rD',
+            },
+            { # no password
+                'email': 'c@mail.com',
+            }
+        ]
+        
+        for user in badUsers:
+            badRequestLogin = self.makeRequest.post(
+                path = self.loginPath, 
+                content_type = self.contentType,
+                data = user
+            )
+            self.assertEqual(badRequestLogin.status_code, 400)
+
+        self.assertEqual(loginRequests['POST'].status_code, 200)
