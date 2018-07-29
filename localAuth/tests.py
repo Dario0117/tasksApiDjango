@@ -1,5 +1,7 @@
 from django.test import TestCase, Client
 
+from .views import getDict
+
 class LocalAuthTestCase(TestCase):
 
     def setUp(self):
@@ -138,3 +140,10 @@ class LocalAuthTestCase(TestCase):
             self.assertEqual(badRequestLogin.status_code, 400)
 
         self.assertEqual(loginRequests['POST'].status_code, 200)
+
+    def test_should_register_users_and_send_token(self):
+        registerRequests = self.requests['register']
+        response = getDict(registerRequests['POST'].content)
+        self.assertEqual(registerRequests['POST'].status_code, 200)
+        self.assertEqual(response['error'], '')
+        self.assertIsNotNone(response['token'])

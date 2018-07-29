@@ -1,7 +1,13 @@
 from django.http import HttpResponse
 from django.core.validators import validate_email
-import json
 from django.views.decorators.csrf import csrf_exempt
+from .models import User
+
+import json
+import jwt
+import os
+
+SECRET_KEY = os.getenv('API_SECRET_KEY', 'SECRET_KEY')
 
 def getDict(byte_str):
     # Parse bytes to string
@@ -40,6 +46,12 @@ def _validate(request, requiredParams):
     else:
         return 404
 
+def getToken():
+    pass
+
+def genToken(user_data):
+    return jwt.encode(user_data, SECRET_KEY)
+
 @csrf_exempt 
 def register(request):
     requiredParams = [
@@ -51,7 +63,36 @@ def register(request):
     if code != 200:
         return HttpResponse(status=code)
     else:
-        return HttpResponse(status=code)
+        params = getDict(request.body)
+        u = User(
+            email = params['email'],
+            name = params['name'],
+            password = params['password'],
+        )
+        try:
+            u.save()
+            token = genToken({
+                'email': params['email'],
+                'id': u.id
+            })
+            return HttpResponse(
+                status = code,
+                content_type = 'application/json',
+                content = json.dumps({
+                'error': '',
+                'token': token.decode('utf-8')
+            })
+            )
+        except Exception as e:
+            print(e)
+            return HttpResponse(
+                status = 400,
+                content_type = 'application/json',
+                content = json.dumps({
+                    'error' : 'email already exists'
+                })
+            )
+            
 
 def login(request):
     requiredParams = [
