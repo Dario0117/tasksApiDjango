@@ -17,8 +17,14 @@ def hasRequiredParams(param_list, requiredParams):
             return False
     return True
 
-def getToken():
-    pass
+def getUserData(headers):
+    try:
+        token = headers['HTTP_AUTHORIZATION'].replace('\'', '')
+        userData = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        return userData
+    except:
+        return False
 
 def genToken(user_data):
-    return jwt.encode(user_data, SECRET_KEY)
+    token = jwt.encode(user_data, SECRET_KEY, algorithm='HS256')
+    return token.decode('utf-8')

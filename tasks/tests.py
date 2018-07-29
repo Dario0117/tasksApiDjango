@@ -8,6 +8,7 @@ class TasksTestCase(TestCase):
         self.makeRequest = Client()
         self.registerPath = '/register'
         self.loginPath = '/login'
+        self.tasksPath = '/tasks'
         self.contentType = 'application/json'
         self.user = {
             'email': 'e@mail.com',
@@ -164,4 +165,31 @@ class TasksTestCase(TestCase):
                 data = user
             )
             self.assertEqual(badRequestLogin.status_code, 400)
+
+    def test_should_throw_error_on_accessing_tasks_without_login(self):
+        unauthenticatedRequests = [
+            self.makeRequest.get( # /tasks GET
+                path = self.tasksPath,
+                content_type = self.contentType,
+            ),
+            self.makeRequest.post( # /tasks POST
+                path = self.tasksPath,
+                content_type = self.contentType,
+            ),
+            self.makeRequest.get( # /tasks/:id GET
+                path = self.tasksPath + '/1',
+                content_type = self.contentType,
+            ),
+            self.makeRequest.patch( # /tasks/:id PATCH
+                path = self.tasksPath + '/1',
+                content_type = self.contentType,
+            ),
+            self.makeRequest.delete( # /tasks/:id DELETE
+                path = self.tasksPath + '/1',
+                content_type = self.contentType,
+            )
+        ]
+        
+        for response in unauthenticatedRequests:
+            self.assertEqual(response.status_code, 403)
 

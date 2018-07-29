@@ -6,6 +6,7 @@ from utils import (
     getDict,
     hasRequiredParams,
     genToken,
+    getUserData,
 )
 
 import json
@@ -65,7 +66,7 @@ def register(request):
                 content_type = 'application/json',
                 content = json.dumps({
                     'error': '',
-                    'token': token.decode('utf-8')
+                    'token': token
                 })
             )
         except:
@@ -102,7 +103,7 @@ def login(request):
                 content_type = 'application/json',
                 content = json.dumps({
                     'error': '',
-                    'token': token.decode('utf-8')
+                    'token': token
                 })
             )
         except:
@@ -113,3 +114,19 @@ def login(request):
                     'error' : 'wrong email or password'
                 })
             )
+
+@csrf_exempt
+def tasks(request):
+    userData = getUserData(request.META)
+    if userData:
+        return HttpResponse(status=200)
+    else:
+        return HttpResponse(status=403)
+
+@csrf_exempt
+def tasks_by_id(request, id):
+    userData = getUserData(request.META)
+    if userData:
+        return HttpResponse(status=200)
+    else:
+        return HttpResponse(status=403)
