@@ -186,6 +186,44 @@ def handle_tasks_get_by_id(user_data, task_id):
             })
         )
 
+def handle_tasks_patch_by_id(body, task_id, user_data):
+    updated = False
+    bodyKeys = body.keys()
+    try:
+        task = Task.objects.get(
+            id = task_id,
+            owner_id = user_data['id'],
+        )
+
+        if 'title' in bodyKeys:
+            updated = True
+            task.title = body['title']
+
+        if 'content' in bodyKeys:
+            updated = True
+            task.content = body['content']
+
+        if updated:
+            task.save()
+        
+        return HttpResponse(
+            status = 200,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error': '',
+                'task': task.toDict()
+            })
+        )
+    except:
+        return HttpResponse(
+            status = 404,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error' : 'task does not exists',
+                'task': '',
+            })
+        )
+
 @csrf_exempt
 def tasks(request):
     userData = getUserData(request.META)
@@ -195,12 +233,6 @@ def tasks(request):
             return handle_tasks_post(body, userData)
         elif request.method == 'GET':
             return handle_tasks_get(userData)
-        elif request.method == 'PUT' and request.content_type == 'application/json':
-            pass
-        elif request.method == 'PATCH' and request.content_type == 'application/json':
-            pass
-        elif request.method == 'DELETE':
-            pass
         else:
             return HttpResponse(status=404)
         return HttpResponse(status=200)
@@ -213,6 +245,18 @@ def tasks_by_id(request, id):
     if userData:
         if request.method == 'GET':
             return handle_tasks_get_by_id(userData, id)
+        elif request.method == 'PATCH':
+            if request.content_type == 'application/json':
+                body = getDict(request.body)
+                return handle_tasks_patch_by_id(
+                    body, 
+                    id,
+                    userData,
+                )
+            else:
+                return handle_tasks_get_by_id(userData, id)
+        elif request.method == 'DELETE':
+            pass
         else:
             return HttpResponse(status=404)
     else:

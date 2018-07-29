@@ -7,6 +7,8 @@ SECRET_KEY = os.getenv('API_SECRET_KEY', 'SECRET_KEY')
 def getDict(byte_str):
     # Parse bytes to string
     raw_str = byte_str.decode('utf-8')
+    if raw_str == '':
+        return {}
     # Parse string to dict
     return json.loads(raw_str.replace('\'', '\"'))
 

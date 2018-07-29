@@ -356,3 +356,131 @@ class TasksTestCase(TestCase):
         self.assertEqual(task.status_code, 404)
         self.assertIsNot(response['error'], '')
         self.assertEqual(response['task'], '')
+
+    def test_should_be_allowed_to_update_tasks(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        oldTitle = 'Title task'
+        oldContent = 'Content task'
+        newTitle = 'Title updated'
+        newContent = 'Content updated'
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': oldTitle,
+                'content': oldContent,
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        # Send empty data
+        updatedTaskEmpty = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+        responseTaskEmpty = getDict(updatedTaskEmpty.content)
+        self.assertEqual(updatedTaskEmpty.status_code, 200)
+        self.assertEqual(responseTaskEmpty['task']['content'], oldContent)
+        self.assertEqual(responseTaskEmpty['task']['title'], oldTitle)
+        self.assertEqual(responseTaskEmpty['error'], '')
+
+        # Update only title
+        updatedTaskTitle = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+            data = {
+                'title': newTitle
+            },
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+        responseTaskTitle = getDict(updatedTaskTitle.content)
+        self.assertEqual(updatedTaskTitle.status_code, 200)
+        self.assertEqual(responseTaskTitle['task']['title'], newTitle)
+        self.assertEqual(responseTaskTitle['error'], '')
+
+        # Update only content
+        updatedTaskContent = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+            data = {
+                'content': newContent
+            },
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+        responseTaskContent = getDict(updatedTaskContent.content)
+        self.assertEqual(updatedTaskContent.status_code, 200)
+        self.assertEqual(responseTaskContent['task']['content'], newContent)
+        self.assertEqual(responseTaskContent['error'], '')
+
+        # Update both
+        updatedTask = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+            data = {
+                'content': oldContent,
+                'title': oldTitle,
+            },
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+        responseTaskBoth = getDict(updatedTask.content)
+        self.assertEqual(updatedTask.status_code, 200)
+        self.assertEqual(responseTaskBoth['task']['content'], oldContent)
+        self.assertEqual(responseTaskBoth['task']['title'], oldTitle)
+        self.assertEqual(responseTaskBoth['error'], '')
+
+    def test_should_throw_error_on_update_tasks_without_login(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title task',
+                'content': 'Content task',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        updatedTask = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+            data = {
+                'content': 'new content',
+                'title': 'new title',
+            }
+        )
+
+        self.assertEqual(updatedTask.status_code, 403)
+    
+    def test_should_throw_error_on_update_inexistent_task(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title task',
+                'content': 'Content task',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        updatedTask = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID + 1), 
+            content_type = self.contentType,
+            data = {
+                'content': 'new content',
+                'title': 'new title',
+            },
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        self.assertEqual(updatedTask.status_code, 404)
+
+    
