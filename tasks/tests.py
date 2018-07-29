@@ -483,4 +483,77 @@ class TasksTestCase(TestCase):
 
         self.assertEqual(updatedTask.status_code, 404)
 
+    def test_should_be_allowed_to_delete_tasks(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title',
+                'content': 'Content',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        # Remove task
+        deletedTask = self.makeRequest.delete(
+            path = self.tasksPath + '/' + str(taskID),
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+        self.assertEqual(deletedTask.status_code, 200)
+
+        # Try to find task with id that doesn't exists anymore
+        # And should throw error 404
+        task = self.makeRequest.get(
+            path = self.tasksPath + str(taskID),
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        self.assertEqual(task.status_code, 404)
+
+    def test_should_throw_error_on_delete_tasks_without_login(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title task',
+                'content': 'Content task',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        deletedTask = self.makeRequest.delete(
+            path = self.tasksPath + '/' + str(taskID), 
+            content_type = self.contentType,
+        )
+
+        self.assertEqual(deletedTask.status_code, 403)
     
+    def test_should_throw_error_on_delete_inexistent_task(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title task',
+                'content': 'Content task',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        taskID = responseTask['id_task']
+
+        deletedTask = self.makeRequest.patch(
+            path = self.tasksPath + '/' + str(taskID + 1), 
+            content_type = self.contentType,
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        self.assertEqual(deletedTask.status_code, 404)
+
+        

@@ -224,6 +224,23 @@ def handle_tasks_patch_by_id(body, task_id, user_data):
             })
         )
 
+def handle_tasks_delete_by_id(user_data, task_id):
+    try:
+        task = Task.objects.get(
+            id = task_id,
+            owner_id = user_data['id'],
+        )
+        task.delete()
+        return HttpResponse(status=200)
+    except:
+        return HttpResponse(
+            status = 404,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error' : 'task does not exists',
+            })
+        )
+
 @csrf_exempt
 def tasks(request):
     userData = getUserData(request.META)
@@ -256,7 +273,7 @@ def tasks_by_id(request, id):
             else:
                 return handle_tasks_get_by_id(userData, id)
         elif request.method == 'DELETE':
-            pass
+            return handle_tasks_delete_by_id(userData, id)
         else:
             return HttpResponse(status=404)
     else:
