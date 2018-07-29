@@ -147,3 +147,33 @@ class LocalAuthTestCase(TestCase):
         self.assertEqual(registerRequests['POST'].status_code, 200)
         self.assertEqual(response['error'], '')
         self.assertIsNotNone(response['token'])
+
+    def test_should_login_with_email_and_password(self):
+        loginRequests = self.requests['login']
+        response = getDict(loginRequests['POST'].content)
+        self.assertEqual(loginRequests['POST'].status_code, 200)
+        self.assertEqual(response['error'], '')
+        self.assertIsNotNone(response['token'])
+
+    def test_should_throw_error_on_wrong_email_and_password(self):
+        loginRequests = self.requests['login']
+        badUsers = [
+            { # wrong password
+                'email': 'e@mail.com',
+                'password': 'wrong_password'
+            },
+            { # email unregistred
+                'email': 'a@mail.com',
+                'password': 'password'
+            }
+        ]
+        
+        for user in badUsers:
+            badRequestLogin = self.makeRequest.post(
+                path = self.loginPath, 
+                content_type = self.contentType,
+                data = user
+            )
+            self.assertEqual(badRequestLogin.status_code, 400)
+
+        self.assertEqual(loginRequests['POST'].status_code, 200)

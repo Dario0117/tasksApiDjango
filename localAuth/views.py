@@ -79,12 +79,11 @@ def register(request):
                 status = code,
                 content_type = 'application/json',
                 content = json.dumps({
-                'error': '',
-                'token': token.decode('utf-8')
-            })
+                    'error': '',
+                    'token': token.decode('utf-8')
+                })
             )
-        except Exception as e:
-            print(e)
+        except:
             return HttpResponse(
                 status = 400,
                 content_type = 'application/json',
@@ -103,4 +102,29 @@ def login(request):
     if code != 200:
         return HttpResponse(status=code)
     else:
-        return HttpResponse(status=code)
+        params = getDict(request.body)
+        try:
+            u = User.objects.get(
+                email = params['email'],
+                password = params['password']
+            )
+            token = genToken({
+                'email': params['email'],
+                'id': u.id
+            })
+            return HttpResponse(
+                status = code,
+                content_type = 'application/json',
+                content = json.dumps({
+                    'error': '',
+                    'token': token.decode('utf-8')
+                })
+            )
+        except:
+            return HttpResponse(
+                status = 400,
+                content_type = 'application/json',
+                content = json.dumps({
+                    'error' : 'wrong email or password'
+                })
+            )
