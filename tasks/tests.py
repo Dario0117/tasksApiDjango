@@ -59,6 +59,34 @@ class TasksTestCase(TestCase):
             }
         }
 
+        response = getDict(self.requests['register']['POST'].content)
+        self.requests['tasks'] = {
+            'GET': self.makeRequest.get(
+                path = self.tasksPath, 
+                content_type = self.contentType,
+                HTTP_AUTHORIZATION = response['token'],
+            ),
+            'PUT': self.makeRequest.put(
+                path = self.tasksPath, 
+                content_type = self.contentType,
+                HTTP_AUTHORIZATION = response['token'],
+            ),
+            'PATCH': self.makeRequest.patch(
+                path = self.tasksPath, 
+                content_type = self.contentType,
+                HTTP_AUTHORIZATION = response['token'],
+            ),
+            'POST': self.makeRequest.post(
+                path = self.tasksPath, 
+                content_type = self.contentType,
+                data = {
+                    'title': 'Note Title',
+                    'content': 'Note content'
+                },
+                HTTP_AUTHORIZATION = response['token'],
+            ),
+        }
+
     def test_requests_must_have_correct_http_verb(self):
         registerRequests = self.requests['register']
         self.assertEqual(registerRequests['GET'].status_code, 404)
@@ -193,3 +221,32 @@ class TasksTestCase(TestCase):
         for response in unauthenticatedRequests:
             self.assertEqual(response.status_code, 403)
 
+    def test_should_create_task_with_authorized_request(self):
+        tasksRequests = self.requests['tasks']
+        response = getDict(tasksRequests['POST'].content)
+        self.assertEqual(tasksRequests['POST'].status_code, 201)
+        self.assertEqual(response['error'], '')
+        self.assertIsNot(response['id_task'], '')
+
+    def test_should_throw_error_on_create_task_with_wrong_parametters(self):
+        auth = getDict(self.requests['register']['POST'].content)
+        badTasks = [
+            { # empty
+
+            },
+            { # no title
+                'content': 'no title'
+            },
+            { # no content
+                'title': 'no content',
+            }
+        ]
+        
+        for task in badTasks:
+            badRequestCreateTask = self.makeRequest.post(
+                path = self.tasksPath, 
+                content_type = self.contentType,
+                data = task,
+                HTTP_AUTHORIZATION = auth['token'],
+            )
+            self.assertEqual(badRequestCreateTask.status_code, 400)

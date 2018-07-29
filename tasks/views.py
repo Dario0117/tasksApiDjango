@@ -1,7 +1,10 @@
 from django.http import HttpResponse
 from django.core.validators import validate_email
 from django.views.decorators.csrf import csrf_exempt
-from .models import User
+from .models import (
+    User,
+    Task,
+)
 from utils import (
     getDict,
     hasRequiredParams,
@@ -115,10 +118,51 @@ def login(request):
                 })
             )
 
+def handle_tasks_post(body, user_data):
+    requiredParams = [
+        'title',
+        'content',
+    ]
+    if hasRequiredParams(body, requiredParams):
+        user = User.objects.get(
+            id = user_data['id'],
+            email = user_data['email'],
+        )
+        t = user.task_set.create(
+            title = body['title'],
+            content = body['content'],
+        )
+        return HttpResponse(
+            status = 201,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error': '',
+                'id_task': t.id
+            })
+        )
+    else:
+        return HttpResponse(status=400)
+
 @csrf_exempt
 def tasks(request):
     userData = getUserData(request.META)
-    if userData:
+    if (
+        userData 
+        and request.content_type == 'application/json'
+    ):
+        if request.method == 'POST':
+            body = getDict(request.body)
+            return handle_tasks_post(body, userData)
+        elif request.method == 'GET':
+            pass
+        elif request.method == 'PUT':
+            pass
+        elif request.method == 'PATCH':
+            pass
+        elif request.method == 'DELETE':
+            pass
+        else:
+            return HttpResponse(status=404)
         return HttpResponse(status=200)
     else:
         return HttpResponse(status=403)
