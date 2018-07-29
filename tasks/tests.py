@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 
 from .views import getDict
 
-class LocalAuthTestCase(TestCase):
+class TasksTestCase(TestCase):
 
     def setUp(self):
         self.makeRequest = Client()
