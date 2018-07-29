@@ -92,7 +92,7 @@ def register(request):
                 })
             )
             
-
+@csrf_exempt 
 def login(request):
     requiredParams = [
         'email',
