@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 
-from .views import getDict
+from utils import getDict
 
 class TasksTestCase(TestCase):
 
@@ -72,31 +72,26 @@ class TasksTestCase(TestCase):
         self.assertEqual(loginRequests['POST'].status_code, 200)
     
     def test_requests_must_have_correct_content_type(self):
-        registerRequests = self.requests['register']
         badRequestRegister = self.makeRequest.post(
             path = self.registerPath, 
             content_type = 'text/plain'
         )
-        self.assertEqual(registerRequests['POST'].status_code, 200)
         self.assertEqual(badRequestRegister.status_code, 400)
 
-        loginRequests = self.requests['login']
         badRequestLogin = self.makeRequest.post(
             path = self.loginPath, 
             content_type = 'text/plain'
         )
-        self.assertEqual(loginRequests['POST'].status_code, 200)
         self.assertEqual(badRequestLogin.status_code, 400)
         
     def test_request_must_have_correct_params(self):
-        registerRequests = self.requests['register']
         badUsers = [
             { # empty
 
             },
             { # no name
                 'email': 'b@mail.com',
-                'name': 'test'
+                'password': 'Pa55w0rD',
             },
             { # no email
                 'name': 'Dario0117',
@@ -116,9 +111,6 @@ class TasksTestCase(TestCase):
             )
             self.assertEqual(badRequestRegister.status_code, 400)
 
-        self.assertEqual(registerRequests['POST'].status_code, 200)
-
-        loginRequests = self.requests['login']
         badUsers = [
             { # empty
 
@@ -139,24 +131,21 @@ class TasksTestCase(TestCase):
             )
             self.assertEqual(badRequestLogin.status_code, 400)
 
-        self.assertEqual(loginRequests['POST'].status_code, 200)
-
     def test_should_register_users_and_send_token(self):
         registerRequests = self.requests['register']
         response = getDict(registerRequests['POST'].content)
-        self.assertEqual(registerRequests['POST'].status_code, 200)
         self.assertEqual(response['error'], '')
+        self.assertIsNot(response['token'], '')
         self.assertIsNotNone(response['token'])
 
     def test_should_login_with_email_and_password(self):
         loginRequests = self.requests['login']
         response = getDict(loginRequests['POST'].content)
-        self.assertEqual(loginRequests['POST'].status_code, 200)
         self.assertEqual(response['error'], '')
+        self.assertIsNot(response['token'], '')
         self.assertIsNotNone(response['token'])
 
     def test_should_throw_error_on_wrong_email_and_password(self):
-        loginRequests = self.requests['login']
         badUsers = [
             { # wrong password
                 'email': 'e@mail.com',
@@ -176,4 +165,3 @@ class TasksTestCase(TestCase):
             )
             self.assertEqual(badRequestLogin.status_code, 400)
 
-        self.assertEqual(loginRequests['POST'].status_code, 200)
