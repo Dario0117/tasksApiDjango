@@ -1,5 +1,22 @@
 # Tasks Api Django
 
+> **Python: 3.5.5**
+
+> **Django: 2.0.7**
+
+> **PyJWT: 1.6.4**
+
+## Instructions
+
+- `git clone https://github.com/Dario0117/tasksApiDjango && cd tasksApiDjango`
+- `docker run -it --name tasksApiDjango -p 8000:8000 -v $PWD:/code python:3.5.5-stretch bash`
+- `cd code`
+- `pip install -r requirements.txt`
+- `python manage.py migrate`
+- `python manage.py runserver 0:8000`
+
+**Test:** `python manage.py test`
+
 ## Use cases
 
 ### Sign up and login

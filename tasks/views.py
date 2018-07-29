@@ -124,30 +124,50 @@ def handle_tasks_post(body, user_data):
         'content',
     ]
     if hasRequiredParams(body, requiredParams):
-        user = User.objects.get(
-            id = user_data['id'],
-            email = user_data['email'],
-        )
-        t = user.task_set.create(
-            title = body['title'],
-            content = body['content'],
-        )
-        return HttpResponse(
-            status = 201,
+        try:
+            user = User.objects.get(
+                id = user_data['id'],
+                email = user_data['email'],
+            )
+            t = user.task_set.create(
+                title = body['title'],
+                content = body['content'],
+            )
+            return HttpResponse(
+                status = 201,
+                content_type = 'application/json',
+                content = json.dumps({
+                    'error': '',
+                    'id_task': t.id
+                })
+            )
+        except:
+            return HttpResponse(
+            status = 404,
             content_type = 'application/json',
             content = json.dumps({
-                'error': '',
-                'id_task': t.id
+                'error' : 'Invalid token, user does not exists',
+                'task': '',
             })
         )
     else:
         return HttpResponse(status=400)
 
 def handle_tasks_get(user_data):
-    user = User.objects.get(
-        id = user_data['id'],
-        email = user_data['email'],
-    )
+    try:
+        user = User.objects.get(
+            id = user_data['id'],
+            email = user_data['email'],
+        )
+    except:
+        return HttpResponse(
+            status = 404,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error' : 'Invalid token, user does not exists',
+                'task': '',
+            })
+        )
     tasks = user.task_set.all().values(
         'id',
         'title',
