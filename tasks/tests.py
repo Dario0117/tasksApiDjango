@@ -4,6 +4,28 @@ from utils import getDict
 
 class TasksTestCase(TestCase):
 
+    def createUser(self, user):
+        return self.makeRequest.post(
+            path = self.registerPath, 
+            content_type = self.contentType,
+            data = user
+        )
+
+    def loginUser(self, user):
+        return self.makeRequest.post(
+            path = self.loginPath, 
+            content_type = self.contentType,
+            data = user
+        )
+
+    def createTask(self, token, task):
+        return self.makeRequest.post(
+            path = self.tasksPath, 
+            content_type = self.contentType,
+            data = task,
+            HTTP_AUTHORIZATION = token,
+        )
+
     def setUp(self):
         self.makeRequest = Client()
         self.registerPath = '/register'
@@ -15,10 +37,9 @@ class TasksTestCase(TestCase):
             'name': 'Dario0117',
             'password': 'Pa55w0rD',
         }
-        
-        # Ideal case requests
-        # This requests should ALWAYS work
-        self.requests = {
+
+    def test_requests_must_have_correct_http_verb(self):
+        requests = {
             'register': {
                 'GET': self.makeRequest.get(
                     path = self.registerPath, 
@@ -58,43 +79,13 @@ class TasksTestCase(TestCase):
                 ),
             }
         }
-
-        response = getDict(self.requests['register']['POST'].content)
-        self.requests['tasks'] = {
-            'GET': self.makeRequest.get(
-                path = self.tasksPath, 
-                content_type = self.contentType,
-                HTTP_AUTHORIZATION = response['token'],
-            ),
-            'PUT': self.makeRequest.put(
-                path = self.tasksPath, 
-                content_type = self.contentType,
-                HTTP_AUTHORIZATION = response['token'],
-            ),
-            'PATCH': self.makeRequest.patch(
-                path = self.tasksPath, 
-                content_type = self.contentType,
-                HTTP_AUTHORIZATION = response['token'],
-            ),
-            'POST': self.makeRequest.post(
-                path = self.tasksPath, 
-                content_type = self.contentType,
-                data = {
-                    'title': 'Note Title',
-                    'content': 'Note content'
-                },
-                HTTP_AUTHORIZATION = response['token'],
-            ),
-        }
-
-    def test_requests_must_have_correct_http_verb(self):
-        registerRequests = self.requests['register']
+        registerRequests = requests['register']
         self.assertEqual(registerRequests['GET'].status_code, 404)
         self.assertEqual(registerRequests['PUT'].status_code, 404)
         self.assertEqual(registerRequests['PATCH'].status_code, 404)
         self.assertEqual(registerRequests['POST'].status_code, 200)
 
-        loginRequests = self.requests['login']
+        loginRequests = requests['login']
         self.assertEqual(loginRequests['GET'].status_code, 404)
         self.assertEqual(loginRequests['PUT'].status_code, 404)
         self.assertEqual(loginRequests['PATCH'].status_code, 404)
@@ -161,15 +152,16 @@ class TasksTestCase(TestCase):
             self.assertEqual(badRequestLogin.status_code, 400)
 
     def test_should_register_users_and_send_token(self):
-        registerRequests = self.requests['register']
-        response = getDict(registerRequests['POST'].content)
+        newUser = self.createUser(self.user)
+        response = getDict(newUser.content)
         self.assertEqual(response['error'], '')
         self.assertIsNot(response['token'], '')
         self.assertIsNotNone(response['token'])
 
     def test_should_login_with_email_and_password(self):
-        loginRequests = self.requests['login']
-        response = getDict(loginRequests['POST'].content)
+        newUser = self.createUser(self.user)
+        sessionUser = self.loginUser(self.user)
+        response = getDict(sessionUser.content)
         self.assertEqual(response['error'], '')
         self.assertIsNot(response['token'], '')
         self.assertIsNotNone(response['token'])
@@ -183,15 +175,17 @@ class TasksTestCase(TestCase):
             { # email unregistred
                 'email': 'a@mail.com',
                 'password': 'password'
+            },
+            { # no email
+                'password': 'password'
+            },
+            { # no password
+                'email': 'a@mail.com',
             }
         ]
         
         for user in badUsers:
-            badRequestLogin = self.makeRequest.post(
-                path = self.loginPath, 
-                content_type = self.contentType,
-                data = user
-            )
+            badRequestLogin = self.loginUser(user)
             self.assertEqual(badRequestLogin.status_code, 400)
 
     def test_should_throw_error_on_accessing_tasks_without_login(self):
@@ -222,14 +216,24 @@ class TasksTestCase(TestCase):
             self.assertEqual(response.status_code, 403)
 
     def test_should_create_task_with_authorized_request(self):
-        tasksRequests = self.requests['tasks']
-        response = getDict(tasksRequests['POST'].content)
-        self.assertEqual(tasksRequests['POST'].status_code, 201)
-        self.assertEqual(response['error'], '')
-        self.assertIsNot(response['id_task'], '')
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        newTask = self.createTask(
+            token = responseUser['token'],
+            task = {
+                'title': 'Title task',
+                'content':'Content task',
+            }
+        )
+        responseTask = getDict(newTask.content)
+        self.assertEqual(newTask.status_code, 201)
+        self.assertEqual(responseTask['error'], '')
+        self.assertIsNot(responseTask['id_task'], '')
 
     def test_should_throw_error_on_create_task_with_wrong_parametters(self):
-        auth = getDict(self.requests['register']['POST'].content)
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
         badTasks = [
             { # empty
 
@@ -243,10 +247,53 @@ class TasksTestCase(TestCase):
         ]
         
         for task in badTasks:
-            badRequestCreateTask = self.makeRequest.post(
-                path = self.tasksPath, 
-                content_type = self.contentType,
-                data = task,
-                HTTP_AUTHORIZATION = auth['token'],
+            newTask = self.createTask(
+                token = responseUser['token'],
+                task = task,
             )
-            self.assertEqual(badRequestCreateTask.status_code, 400)
+            self.assertEqual(newTask.status_code, 400)
+
+    def test_should_get_tasks_with_authorized_request(self):
+
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        Tasks = [
+            { 
+                'title': 'Task title 1',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 2',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 3',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 4',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 5',
+                'content': 'Task content'
+            },
+        ]
+        
+        for task in Tasks:
+            newTask = self.createTask(
+                token = responseUser['token'],
+                task = task,
+            )
+
+        allTasks = self.makeRequest.get(
+            path = self.tasksPath, 
+            content_type = self.contentType,
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        response = getDict(allTasks.content)
+        self.assertEqual(allTasks.status_code, 200)
+        self.assertEqual(response['error'], '')
+        self.assertIsInstance(response['tasks'], list)

@@ -143,21 +143,37 @@ def handle_tasks_post(body, user_data):
     else:
         return HttpResponse(status=400)
 
+def handle_tasks_get(user_data):
+    user = User.objects.get(
+        id = user_data['id'],
+        email = user_data['email'],
+    )
+    tasks = user.task_set.all().values(
+        'id',
+        'title',
+        'content',
+    )
+    return HttpResponse(
+        status = 200,
+        content_type = 'application/json',
+        content = json.dumps({
+            'error': '',
+            'tasks': list(tasks)
+        })
+    )
+
 @csrf_exempt
 def tasks(request):
     userData = getUserData(request.META)
-    if (
-        userData 
-        and request.content_type == 'application/json'
-    ):
-        if request.method == 'POST':
+    if userData:
+        if request.method == 'POST' and request.content_type == 'application/json':
             body = getDict(request.body)
             return handle_tasks_post(body, userData)
         elif request.method == 'GET':
+            return handle_tasks_get(userData)
+        elif request.method == 'PUT' and request.content_type == 'application/json':
             pass
-        elif request.method == 'PUT':
-            pass
-        elif request.method == 'PATCH':
+        elif request.method == 'PATCH' and request.content_type == 'application/json':
             pass
         elif request.method == 'DELETE':
             pass
