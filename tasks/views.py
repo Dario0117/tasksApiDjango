@@ -162,6 +162,30 @@ def handle_tasks_get(user_data):
         })
     )
 
+def handle_tasks_get_by_id(user_data, task_id):
+    try:
+        task = Task.objects.get(
+            id = task_id,
+            owner_id = user_data['id'],
+        )
+        return HttpResponse(
+            status = 200,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error': '',
+                'task': task.toDict()
+            })
+        )
+    except:
+        return HttpResponse(
+            status = 404,
+            content_type = 'application/json',
+            content = json.dumps({
+                'error' : 'task does not exists',
+                'task': '',
+            })
+        )
+
 @csrf_exempt
 def tasks(request):
     userData = getUserData(request.META)
@@ -187,6 +211,9 @@ def tasks(request):
 def tasks_by_id(request, id):
     userData = getUserData(request.META)
     if userData:
-        return HttpResponse(status=200)
+        if request.method == 'GET':
+            return handle_tasks_get_by_id(userData, id)
+        else:
+            return HttpResponse(status=404)
     else:
         return HttpResponse(status=403)

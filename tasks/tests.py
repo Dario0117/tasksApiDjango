@@ -253,7 +253,7 @@ class TasksTestCase(TestCase):
             )
             self.assertEqual(newTask.status_code, 400)
 
-    def test_should_get_tasks_with_authorized_request(self):
+    def test_should_get_all_tasks_with_authorized_request(self):
 
         newUser = self.createUser(self.user)
         responseUser = getDict(newUser.content)
@@ -297,3 +297,62 @@ class TasksTestCase(TestCase):
         self.assertEqual(allTasks.status_code, 200)
         self.assertEqual(response['error'], '')
         self.assertIsInstance(response['tasks'], list)
+
+    def test_should_get_specific_task_with_authorized_request(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        Tasks = [
+            { 
+                'title': 'Task title 1',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 2',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 3',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 4',
+                'content': 'Task content'
+            },
+            { 
+                'title': 'Task title 5',
+                'content': 'Task content'
+            },
+        ]
+        
+        for task in Tasks:
+            newTask = self.createTask(
+                token = responseUser['token'],
+                task = task,
+            )
+
+        task = self.makeRequest.get(
+            path = self.tasksPath + '/3', 
+            content_type = self.contentType,
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        response = getDict(task.content)
+        self.assertEqual(task.status_code, 200)
+        self.assertEqual(response['error'], '')
+        self.assertIsNot(response['task'], '')
+
+    def test_should_throw_error_on_get_inexistent_task(self):
+        newUser = self.createUser(self.user)
+        responseUser = getDict(newUser.content)
+
+        task = self.makeRequest.get(
+            path = self.tasksPath + '/1', 
+            content_type = self.contentType,
+            HTTP_AUTHORIZATION = responseUser['token'],
+        )
+
+        response = getDict(task.content)
+        self.assertEqual(task.status_code, 404)
+        self.assertIsNot(response['error'], '')
+        self.assertEqual(response['task'], '')
