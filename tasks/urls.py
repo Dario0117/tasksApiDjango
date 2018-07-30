@@ -1,10 +1,10 @@
-from django.urls import path
-
+from django.urls import path, include
+from rest_framework import routers
 from . import views
 
+router = routers.DefaultRouter()
+router.register('tasks', views.TaskView)
+
 urlpatterns = [
-    path('register', views.register, name='register'),
-    path('login', views.login, name='login'),
-    path('tasks', views.tasks, name='tasks'),
-    path('tasks/<int:id>', views.tasks_by_id, name='tasks_by_id'),
+    path('', include(router.urls)),
 ]
