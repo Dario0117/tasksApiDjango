@@ -24,8 +24,8 @@
     - Description: User gain access to service
     - Constraints: Can not create multiple accounts with same email
     - Routes:
-        - /register [POST] : IN {email, name, password}, OUT {token}
-        - /login [POST]: IN {email, password}, OUT {token}
+        - /register [POST] : IN {email, username, password}, OUT {token}
+        - /login [POST]: IN {username, password}, OUT {token}
 
 ### Create tasks
 
