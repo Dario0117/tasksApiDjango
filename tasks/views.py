@@ -4,8 +4,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
+from django.urls import reverse
+from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import viewsets
 import json
+import requests
 from .models import Task
 from .serializers import TasksSerializer
 from utils import (
@@ -64,12 +67,24 @@ def register(request):
                 password = params['password'],
             )
             u.save()
-            token = 'PROVISOINAL_TOKEN'
+            # Build url to get token from login route
+            url = 'http://{domain}{path}'.format(
+                domain = get_current_site(request).domain, 
+                path = reverse('token_obtain_pair')
+            )
+            r = requests.post(
+                url,
+                data = {
+                    "username": params['username'].lower(),
+                    "password": params['password'],
+                }
+            )
+            token = json.loads(r.text)
             return HttpResponse(
                 status = 201,
                 content_type = 'application/json',
                 content = json.dumps({
-                    'token': token,
+                    'token': token['access'],
                 })
             )
         except Exception as e:
@@ -80,39 +95,4 @@ def register(request):
                     'detail' : 'invalid parameters',
                 })
             )
-            
-@csrf_exempt 
-def login(request):
-    requiredParams = [
-        'username',
-        'password',
-    ]
-    code = _validate(request, requiredParams, False)
-    if code != 200:
-        return HttpResponse(status=code)
-    else:
-        params = getDict(request.body)
-        try:
-            user = authenticate(
-                username = params['username'].lower(),
-                password = params['password']
-            )
-            print(user)
-            if user is None:
-                raise ValueError('invalid credentials')
-            token = 'PROVISOINAL_TOKEN'
-            return HttpResponse(
-                status = code,
-                content_type = 'application/json',
-                content = json.dumps({
-                    'token': token,
-                })
-            )
-        except:
-            return HttpResponse(
-                status = 400,
-                content_type = 'application/json',
-                content = json.dumps({
-                    'detail' : 'wrong username or password',
-                })
-            )
+    

@@ -26,6 +26,7 @@
     - Routes:
         - /register [POST] : IN {email, username, password}, OUT {token}
         - /login [POST]: IN {username, password}, OUT {token}
+> Username must be in lower case
 
 ### Create tasks
 
