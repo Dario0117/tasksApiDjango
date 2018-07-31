@@ -1,5 +1,5 @@
 from django.test import TestCase, Client
-
+import json
 from utils import getDict
 
 class TasksTestCase(TestCase):
@@ -15,7 +15,7 @@ class TasksTestCase(TestCase):
         return self.makeRequest.post(
             path = self.loginPath, 
             content_type = self.contentType,
-            data = user
+            data = json.dumps(user)
         )
 
     def createTask(self, token, task):
@@ -23,18 +23,18 @@ class TasksTestCase(TestCase):
             path = self.tasksPath, 
             content_type = self.contentType,
             data = task,
-            HTTP_AUTHORIZATION = token,
+            HTTP_AUTHORIZATION = 'Bearer ' + token,
         )
 
     def setUp(self):
         self.makeRequest = Client()
-        self.registerPath = '/register'
-        self.loginPath = '/login'
-        self.tasksPath = '/tasks'
+        self.registerPath = '/register/'
+        self.loginPath = '/login/'
+        self.tasksPath = '/tasks/'
         self.contentType = 'application/json'
         self.user = {
-            'email': 'e@mail.com',
-            'name': 'Dario0117',
+            'email': 'a@mail.com',
+            'username': 'dario0117',
             'password': 'Pa55w0rD',
         }
 
@@ -53,11 +53,7 @@ class TasksTestCase(TestCase):
                     path = self.registerPath, 
                     content_type = self.contentType
                 ),
-                'POST': self.makeRequest.post(
-                    path = self.registerPath, 
-                    content_type = self.contentType,
-                    data = self.user
-                ),
+                'POST': self.createUser(self.user),
             },
             'login': {
                 'GET': self.makeRequest.get(
@@ -75,7 +71,7 @@ class TasksTestCase(TestCase):
                 'POST': self.makeRequest.post(
                     path = self.loginPath, 
                     content_type = self.contentType,
-                    data = self.user
+                    data = json.dumps(self.user),
                 ),
             }
         }
@@ -83,12 +79,12 @@ class TasksTestCase(TestCase):
         self.assertEqual(registerRequests['GET'].status_code, 404)
         self.assertEqual(registerRequests['PUT'].status_code, 404)
         self.assertEqual(registerRequests['PATCH'].status_code, 404)
-        self.assertEqual(registerRequests['POST'].status_code, 200)
+        self.assertEqual(registerRequests['POST'].status_code, 201)
 
         loginRequests = requests['login']
-        self.assertEqual(loginRequests['GET'].status_code, 404)
-        self.assertEqual(loginRequests['PUT'].status_code, 404)
-        self.assertEqual(loginRequests['PATCH'].status_code, 404)
+        self.assertEqual(loginRequests['GET'].status_code, 405)
+        self.assertEqual(loginRequests['PUT'].status_code, 405)
+        self.assertEqual(loginRequests['PATCH'].status_code, 405)
         self.assertEqual(loginRequests['POST'].status_code, 200)
     
     def test_requests_must_have_correct_content_type(self):
@@ -102,7 +98,7 @@ class TasksTestCase(TestCase):
             path = self.loginPath, 
             content_type = 'text/plain'
         )
-        self.assertEqual(badRequestLogin.status_code, 400)
+        self.assertEqual(badRequestLogin.status_code, 415)
         
     def test_request_must_have_correct_params(self):
         badUsers = [
@@ -151,20 +147,12 @@ class TasksTestCase(TestCase):
             )
             self.assertEqual(badRequestLogin.status_code, 400)
 
-    def test_should_register_users_and_send_token(self):
-        newUser = self.createUser(self.user)
-        response = getDict(newUser.content)
-        self.assertEqual(response['error'], '')
-        self.assertIsNot(response['token'], '')
-        self.assertIsNotNone(response['token'])
-
     def test_should_login_with_email_and_password(self):
         newUser = self.createUser(self.user)
         sessionUser = self.loginUser(self.user)
         response = getDict(sessionUser.content)
-        self.assertEqual(response['error'], '')
-        self.assertIsNot(response['token'], '')
-        self.assertIsNotNone(response['token'])
+        self.assertIsNot(response['access'], '')
+        self.assertIsNot(response['refresh'], '')
 
     def test_should_throw_error_on_wrong_email_and_password(self):
         badUsers = [
@@ -199,41 +187,45 @@ class TasksTestCase(TestCase):
                 content_type = self.contentType,
             ),
             self.makeRequest.get( # /tasks/:id GET
-                path = self.tasksPath + '/1',
+                path = self.tasksPath + '/1/',
                 content_type = self.contentType,
             ),
             self.makeRequest.patch( # /tasks/:id PATCH
-                path = self.tasksPath + '/1',
+                path = self.tasksPath + '/1/',
                 content_type = self.contentType,
             ),
             self.makeRequest.delete( # /tasks/:id DELETE
-                path = self.tasksPath + '/1',
+                path = self.tasksPath + '/1/',
                 content_type = self.contentType,
             )
         ]
+
+        possibleCodes = {
+            404: True,
+            401: True,
+        }
         
         for response in unauthenticatedRequests:
-            self.assertEqual(response.status_code, 403)
+            self.assertEqual(possibleCodes[response.status_code], True)
 
     def test_should_create_task_with_authorized_request(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
-
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': 'Title task',
                 'content':'Content task',
-            }
+            })
         )
         responseTask = getDict(newTask.content)
         self.assertEqual(newTask.status_code, 201)
-        self.assertEqual(responseTask['error'], '')
-        self.assertIsNot(responseTask['id_task'], '')
 
     def test_should_throw_error_on_create_task_with_wrong_parametters(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
         badTasks = [
             { # empty
 
@@ -248,7 +240,7 @@ class TasksTestCase(TestCase):
         
         for task in badTasks:
             newTask = self.createTask(
-                token = responseUser['token'],
+                token = response['access'],
                 task = task,
             )
             self.assertEqual(newTask.status_code, 400)
@@ -256,7 +248,8 @@ class TasksTestCase(TestCase):
     def test_should_get_all_tasks_with_authorized_request(self):
 
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         Tasks = [
             { 
@@ -283,24 +276,25 @@ class TasksTestCase(TestCase):
         
         for task in Tasks:
             newTask = self.createTask(
-                token = responseUser['token'],
-                task = task,
+                token = response['access'],
+                task = json.dumps(task),
             )
+            self.assertEqual(newTask.status_code, 201)
 
         allTasks = self.makeRequest.get(
             path = self.tasksPath, 
             content_type = self.contentType,
-            HTTP_AUTHORIZATION = responseUser['token'],
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
 
         response = getDict(allTasks.content)
         self.assertEqual(allTasks.status_code, 200)
-        self.assertEqual(response['error'], '')
-        self.assertIsInstance(response['tasks'], list)
+        self.assertIsInstance(response, list)
 
     def test_should_get_specific_task_with_authorized_request(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         Tasks = [
             { 
@@ -327,39 +321,34 @@ class TasksTestCase(TestCase):
         
         for task in Tasks:
             newTask = self.createTask(
-                token = responseUser['token'],
-                task = task,
+                token = response['access'],
+                task = json.dumps(task),
             )
 
         task = self.makeRequest.get(
-            path = self.tasksPath + '/3', 
+            path = self.tasksPath + '3/', 
             content_type = self.contentType,
-            HTTP_AUTHORIZATION = responseUser['token'],
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
 
-        response = getDict(task.content)
         self.assertEqual(task.status_code, 200)
-        self.assertEqual(response['error'], '')
-        self.assertIsNot(response['task'], '')
 
     def test_should_throw_error_on_get_inexistent_task(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         task = self.makeRequest.get(
-            path = self.tasksPath + '/1', 
+            path = self.tasksPath + '1/', 
             content_type = self.contentType,
-            HTTP_AUTHORIZATION = responseUser['token'],
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
-
-        response = getDict(task.content)
         self.assertEqual(task.status_code, 404)
-        self.assertIsNot(response['error'], '')
-        self.assertEqual(response['task'], '')
 
     def test_should_be_allowed_to_update_tasks(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         oldTitle = 'Title task'
         oldContent = 'Content task'
@@ -367,87 +356,83 @@ class TasksTestCase(TestCase):
         newContent = 'Content updated'
 
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': oldTitle,
                 'content': oldContent,
-            }
+            })
         )
         responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         # Send empty data
         updatedTaskEmpty = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID) +'/', 
             content_type = self.contentType,
-            HTTP_AUTHORIZATION = responseUser['token'],
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
         responseTaskEmpty = getDict(updatedTaskEmpty.content)
         self.assertEqual(updatedTaskEmpty.status_code, 200)
-        self.assertEqual(responseTaskEmpty['task']['content'], oldContent)
-        self.assertEqual(responseTaskEmpty['task']['title'], oldTitle)
-        self.assertEqual(responseTaskEmpty['error'], '')
+        self.assertEqual(responseTaskEmpty['content'], oldContent)
+        self.assertEqual(responseTaskEmpty['title'], oldTitle)
 
         # Update only title
         updatedTaskTitle = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID) + '/', 
             content_type = self.contentType,
-            data = {
+            data = json.dumps({
                 'title': newTitle
-            },
-            HTTP_AUTHORIZATION = responseUser['token'],
+            }),
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
         responseTaskTitle = getDict(updatedTaskTitle.content)
         self.assertEqual(updatedTaskTitle.status_code, 200)
-        self.assertEqual(responseTaskTitle['task']['title'], newTitle)
-        self.assertEqual(responseTaskTitle['error'], '')
+        self.assertEqual(responseTaskTitle['title'], newTitle)
 
         # Update only content
         updatedTaskContent = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID) + '/', 
             content_type = self.contentType,
-            data = {
+            data = json.dumps({
                 'content': newContent
-            },
-            HTTP_AUTHORIZATION = responseUser['token'],
+            }),
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
         responseTaskContent = getDict(updatedTaskContent.content)
         self.assertEqual(updatedTaskContent.status_code, 200)
-        self.assertEqual(responseTaskContent['task']['content'], newContent)
-        self.assertEqual(responseTaskContent['error'], '')
+        self.assertEqual(responseTaskContent['content'], newContent)
 
         # Update both
         updatedTask = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID) + '/', 
             content_type = self.contentType,
-            data = {
+            data = json.dumps({
                 'content': oldContent,
                 'title': oldTitle,
-            },
-            HTTP_AUTHORIZATION = responseUser['token'],
+            }),
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
         responseTaskBoth = getDict(updatedTask.content)
         self.assertEqual(updatedTask.status_code, 200)
-        self.assertEqual(responseTaskBoth['task']['content'], oldContent)
-        self.assertEqual(responseTaskBoth['task']['title'], oldTitle)
-        self.assertEqual(responseTaskBoth['error'], '')
+        self.assertEqual(responseTaskBoth['content'], oldContent)
+        self.assertEqual(responseTaskBoth['title'], oldTitle)
 
     def test_should_throw_error_on_update_tasks_without_login(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': 'Title task',
                 'content': 'Content task',
-            }
+            }),
         )
-        responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         updatedTask = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID)+ '/', 
             content_type = self.contentType,
             data = {
                 'content': 'new content',
@@ -455,103 +440,103 @@ class TasksTestCase(TestCase):
             }
         )
 
-        self.assertEqual(updatedTask.status_code, 403)
+        self.assertEqual(updatedTask.status_code, 401)
     
     def test_should_throw_error_on_update_inexistent_task(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': 'Title task',
                 'content': 'Content task',
-            }
+            }),
         )
-        responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         updatedTask = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID + 1), 
+            path = self.tasksPath + str(taskID + 1) + '/', 
             content_type = self.contentType,
-            data = {
+            data = json.dumps({
                 'content': 'new content',
                 'title': 'new title',
-            },
-            HTTP_AUTHORIZATION = responseUser['token'],
+            }),
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
 
         self.assertEqual(updatedTask.status_code, 404)
 
     def test_should_be_allowed_to_delete_tasks(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': 'Title',
                 'content': 'Content',
-            }
+            }),
         )
-        responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         # Remove task
         deletedTask = self.makeRequest.delete(
-            path = self.tasksPath + '/' + str(taskID),
-            HTTP_AUTHORIZATION = responseUser['token'],
+            path = self.tasksPath + str(taskID) + '/',
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
         self.assertEqual(deletedTask.status_code, 200)
 
         # Try to find task with id that doesn't exists anymore
         # And should throw error 404
         task = self.makeRequest.get(
-            path = self.tasksPath + str(taskID),
-            HTTP_AUTHORIZATION = responseUser['token'],
+            path = self.tasksPath + str(taskID) + '/',
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
 
         self.assertEqual(task.status_code, 404)
 
     def test_should_throw_error_on_delete_tasks_without_login(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         newTask = self.createTask(
-            token = responseUser['token'],
-            task = {
+            token = response['access'],
+            task = json.dumps({
                 'title': 'Title task',
                 'content': 'Content task',
-            }
+            }),
         )
-        responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         deletedTask = self.makeRequest.delete(
-            path = self.tasksPath + '/' + str(taskID), 
+            path = self.tasksPath + str(taskID) + '/', 
             content_type = self.contentType,
         )
 
-        self.assertEqual(deletedTask.status_code, 403)
+        self.assertEqual(deletedTask.status_code, 401)
     
     def test_should_throw_error_on_delete_inexistent_task(self):
         newUser = self.createUser(self.user)
-        responseUser = getDict(newUser.content)
+        newUserLogin = self.loginUser(self.user)
+        response = getDict(newUserLogin.content)
 
         newTask = self.createTask(
-            token = responseUser['token'],
+            token = response['access'],
             task = {
                 'title': 'Title task',
                 'content': 'Content task',
             }
         )
-        responseTask = getDict(newTask.content)
-        taskID = responseTask['id_task']
+        taskID = 1
 
         deletedTask = self.makeRequest.patch(
-            path = self.tasksPath + '/' + str(taskID + 1), 
+            path = self.tasksPath + str(taskID + 1) + '/', 
             content_type = self.contentType,
-            HTTP_AUTHORIZATION = responseUser['token'],
+            HTTP_AUTHORIZATION = 'Bearer ' + response['access'],
         )
 
         self.assertEqual(deletedTask.status_code, 404)

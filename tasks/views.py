@@ -46,10 +46,13 @@ class TaskView(viewsets.ModelViewSet):
 
     def create(self, request):
         user = User.objects.get(username=request.user)
-        user.task_set.create(
-            title=request.data['title'],
-            content=request.data['content']
-        )
+        try:
+            user.task_set.create(
+                title=request.data['title'],
+                content=request.data['content']
+            )
+        except:
+            return Response(None, status=400)
         return Response(None, status=201)
 
 
@@ -131,26 +134,7 @@ def register(request):
                 password = params['password'],
             )
             u.save()
-            # Build url to get token from login route
-            url = 'http://{domain}{path}'.format(
-                domain = get_current_site(request).domain, 
-                path = reverse('token_obtain_pair')
-            )
-            r = requests.post(
-                url,
-                data = {
-                    "username": params['username'].lower(),
-                    "password": params['password'],
-                }
-            )
-            token = json.loads(r.text)
-            return HttpResponse(
-                status = 201,
-                content_type = 'application/json',
-                content = json.dumps({
-                    'token': token['access'],
-                })
-            )
+            return HttpResponse(status = 201)
         except Exception as e:
             return HttpResponse(
                 status = 400,

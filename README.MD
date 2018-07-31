@@ -4,7 +4,12 @@
 
 > **Django: 2.0.7**
 
-> **PyJWT: 1.6.4**
+> **djangorestframework: 3.8.2**
+
+> **djangorestframework-simplejwt: 3.2.3**
+
+> **requests: 2.19.1**
+
 
 ## Instructions
 
@@ -24,7 +29,7 @@
     - Description: User gain access to service
     - Constraints: Can not create multiple accounts with same email
     - Routes:
-        - /register [POST] : IN {email, username, password}, OUT {token}
+        - /register [POST] : IN {email, username, password}, OUT {}
         - /login [POST]: IN {username, password}, OUT {token}
 > Username must be in lower case
 
@@ -32,7 +37,7 @@
 
     - Description: User can create tasks and assign it to his account
     - Routes:
-        - /tasks [POST]: HEAD {token}, IN {title, content}, OUT {id_task}
+        - /tasks [POST]: HEAD {token}, IN {title, content}, OUT {}
 
 ### Retrieve tasks
 

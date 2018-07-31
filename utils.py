@@ -1,8 +1,4 @@
 import json
-import jwt
-import os
-
-SECRET_KEY = os.getenv('API_SECRET_KEY', 'SECRET_KEY')
 
 def getDict(byte_str):
     # Parse bytes to string
@@ -18,15 +14,3 @@ def hasRequiredParams(param_list, requiredParams):
         if not param in params_on_body:
             return False
     return True
-
-def getUserData(headers):
-    try:
-        token = headers['HTTP_AUTHORIZATION'].replace('\'', '')
-        userData = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        return userData
-    except:
-        return False
-
-def genToken(user_data):
-    token = jwt.encode(user_data, SECRET_KEY, algorithm='HS256')
-    return token.decode('utf-8')
