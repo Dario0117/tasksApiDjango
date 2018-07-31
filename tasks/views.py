@@ -12,7 +12,6 @@ from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import viewsets
 from rest_framework.response import Response
 import json
-import requests
 from .models import Task
 from .serializers import TasksSerializer
 from utils import (

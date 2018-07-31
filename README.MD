@@ -8,9 +8,6 @@
 
 > **djangorestframework-simplejwt: 3.2.3**
 
-> **requests: 2.19.1**
-
-
 ## Instructions
 
 - `git clone https://github.com/Dario0117/tasksApiDjango && cd tasksApiDjango`
